@@ -1,0 +1,33 @@
+[tool.hatch.build.targets.wheel]
+packages = ["oasis2_longitudinal_trajectory"]
+
+[project]
+name = "oasis2-longitudinal-trajectory"
+version = "0.1.0"
+description = "Leak-proof machine learning for predicting longitudinal neurodegeneration trajectories from baseline MRI scans."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "matplotlib>=3.8",
+    "nibabel>=5.2",
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "seaborn>=0.13",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0",
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
