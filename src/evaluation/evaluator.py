@@ -263,34 +263,64 @@ def _save_trajectory_plot(
     trajectory_matrix,
     tracking_feature,
     output_dir,
+    y_true=None,
+    y_pred=None,
 ):
-    """Save individual subject trajectories grouped by cluster."""
+    """Save the confusion matrix and color-coded cluster trajectories."""
 
     visit_columns = [
         col for col in trajectory_matrix.columns
         if col != "Trajectory_Cluster"
     ]
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    if y_true is not None and y_pred is not None:
+        fig, (cm_ax, ax) = plt.subplots(1, 2, figsize=(16, 6))
+        cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            cbar=False,
+            xticklabels=["Stable (0)", "Declining (1)"],
+            yticklabels=["Stable (0)", "Declining (1)"],
+            annot_kws={"size": 14, "weight": "bold"},
+            ax=cm_ax,
+        )
+        cm_ax.set_title("Held-Out Blind Confusion Matrix")
+        cm_ax.set_xlabel("Predicted Trajectory Group")
+        cm_ax.set_ylabel("True Reality Trajectory Group")
+    else:
+        fig, ax = plt.subplots(figsize=(9, 6))
+
+    colors = {0: "#3498db", 1: "#e74c3c"}
+    x_indices = list(range(1, len(visit_columns) + 1))
 
     for _, row in trajectory_matrix.iterrows():
-        cluster = row["Trajectory_Cluster"]
+        cluster = int(row["Trajectory_Cluster"])
 
         ax.plot(
-            range(1, len(visit_columns) + 1),
+            x_indices,
             row[visit_columns].to_numpy(dtype=float),
+            color=colors[cluster],
             alpha=0.25,
-            linewidth=1.2,
-            label=f"Cluster {cluster}",
+            linewidth=1.5,
         )
 
-    ax.set_title(f"Longitudinal Trajectories ({tracking_feature})")
-    ax.set_xlabel("Visit Sequence")
-    ax.set_ylabel("Normalized Brain Volume")
-
-    handles, labels = ax.get_legend_handles_labels()
-    unique = dict(zip(labels, handles))
-    ax.legend(unique.values(), unique.keys())
+    ax.set_title(f"Discovered Long-Term Brain Atrophy Paths ({tracking_feature})")
+    ax.set_xlabel("Clinical Visit Sequence")
+    ax.set_ylabel("Normalized Whole Brain Volume (nWBV)")
+    ax.set_xticks(x_indices)
+    ax.set_xticklabels(visit_columns)
+    ax.legend(
+        handles=[
+            plt.Line2D([], [], color=colors[0], linewidth=3,
+                       label="Cluster 0: Healthy Stable"),
+            plt.Line2D([], [], color=colors[1], linewidth=3,
+                       label="Cluster 1: Accelerated Atrophy"),
+        ],
+        loc="lower left",
+    )
 
     fig.tight_layout()
     fig.savefig(output_dir / "trajectory_clusters.png", dpi=300)
@@ -335,6 +365,11 @@ def evaluate_model(
         test_clusters = clustering_model.predict(
             test_trajectory_matrix
         )
+        label_map = getattr(clustering_model, "trajectory_label_map_", None)
+        if label_map is not None:
+            test_clusters = np.asarray(
+                [label_map[int(label)] for label in test_clusters]
+            )
 
         test_labels = pd.Series(
             test_clusters,
@@ -407,6 +442,8 @@ def evaluate_model(
             train_trajectory_matrix,
             tracking_feature,
             output_dir,
+            y_true=y_test,
+            y_pred=y_pred,
         )
 
         auc_score = None

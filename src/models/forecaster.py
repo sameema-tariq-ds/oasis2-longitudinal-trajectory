@@ -353,7 +353,11 @@ def train_baseline_forecaster(
             min_samples_leaf=min_samples_leaf,
             class_weight="balanced",
             random_state=random_state,
-            n_jobs=-1,
+            # Single-process execution is more portable on restricted
+            # Windows/Jupyter environments where joblib worker creation can
+            # fail with WinError 5.  The dataset is small enough that the
+            # runtime impact is negligible.
+            n_jobs=1,
         )
 
         forecasting_pipeline = Pipeline(

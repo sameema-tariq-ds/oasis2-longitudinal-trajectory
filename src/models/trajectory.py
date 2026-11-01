@@ -152,6 +152,24 @@ def build_and_fit_trajectories(
             trajectory_matrix
         )
 
+        # K-Means cluster numbers are arbitrary.  Give them a stable
+        # clinical meaning: 0 = higher-volume/stable and 1 = lower-volume/
+        # declining.  Store the mapping on the fitted pipeline so the same
+        # convention can be applied to held-out subjects during evaluation.
+        raw_centers = clustering_pipeline.named_steps["kmeans"].cluster_centers_
+        centers = clustering_pipeline.named_steps["scaler"].inverse_transform(
+            raw_centers
+        )
+        stable_raw_label = int(np.argmax(centers.mean(axis=1)))
+        label_map = {
+            stable_raw_label: 0,
+            1 - stable_raw_label: 1,
+        }
+        clustering_pipeline.trajectory_label_map_ = label_map
+        cluster_labels = np.asarray(
+            [label_map[int(label)] for label in cluster_labels]
+        )
+
         # 6. Attach cluster assignments.
         trajectory_matrix["Trajectory_Cluster"] = cluster_labels
 
